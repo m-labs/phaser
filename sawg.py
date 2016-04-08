@@ -23,11 +23,12 @@ class DDS(Module):
 
         self.a = a.i
         self.f = f.i
-        self.p = Endpoint(p.i.payload.layout + [("clr", 1)])
+        self.p = p.i
         self.i = [a.i, f.i, self.p]
         self.o = [[Signal((width, True)) for i in range(2)]
                   for i in range(parallelism)]
         self.ce = Signal()
+        self.clr = Signal()
         self.parallelism = parallelism
         self.latency = 0  # will be accumulated
 
@@ -38,28 +39,22 @@ class DDS(Module):
         q = PhasedAccu(f_width, parallelism)
         self.submodules += q
         self.latency += q.latency
-        c = Signal()
         da = [Signal((width, True)) for i in range(q.latency)]
 
         self.sync += [
             If(q.i.stb & q.i.ack,
-                c.eq(0),
                 da[0][-a_width:].eq(a.o.a0[-width:]),
                 [da[i + 1].eq(da[i]) for i in range(len(da) - 1)],
             ),
-            If(self.p.stb & self.p.ack,
-                c.eq(self.p.clr),
-            ),
         ]
         self.comb += [
-            self.p.connect(p.i, leave_out={"clr"}),
             a.o.ack.eq(self.ce),
             p.o.ack.eq(self.ce),
             f.o.ack.eq(self.ce),
             q.i.stb.eq(self.ce),
             q.i.p[-p_width:].eq(p.o.a0[-f_width:]),
             q.i.f.eq(f.o.a0),
-            q.i.clr.eq(c),
+            q.i.clr.eq(self.clr),
             q.o.ack.eq(1),
         ]
 
@@ -81,38 +76,58 @@ class DDS(Module):
         self.gain = c[0].gain
 
 
-class DDSPair(Module):
-    def __init__(self, width=16, **kwargs):
-        du = Spline(width=width*4, order=4)
-        dv = Spline(width=width*4, order=4)
-        da = DDS(width, **kwargs)
-        db = DDS(width, **kwargs)
-        self.submodules += du, dv, da, db
-        self.i = [du.i, dv.i] + da.i + db.i
-        self.o = [(Signal((width, True)), Signal((width, True)))
-                  for i in range(da.parallelism)]
-        self.parallelism = da.parallelism
-        self.latency = da.latency + 1
-        self.cordic_gain = da.gain
-        self.iq = Signal(4)
+class Config(Module):
+    def __init__(self):
+        self.cfg = Record([("iq", 2), ("tap", 4), ("clr", 1)])
+        self.i = Endpoint(self.cfg.layout)
         self.ce = Signal()
 
         ###
 
-        ddu, ddv = (Delay((width, True), da.latency - du.latency)
-                    for i in range(2))
-        self.submodules += ddu, ddv
+        n = Signal(1 << len(self.i.tap))
+        tap = Signal.like(self.i.tap)
+
         self.comb += [
-            [d.i.eq(u.o.a0[-width:]) for d, u in zip((ddu, ddv), (du, dv))],
-            [_.ce.eq(self.ce) for _ in (da, db)],
-            [_.o.ack.eq(self.ce) for _ in (du, dv)],
+            self.i.ack.eq(1),
+            self.ce.eq(Array([1] + list(n))[tap]),
         ]
-        for oi, ai, bi in zip(self.o, da.o, db.o):
+        self.sync += [
+            n.eq(n + 1),
+            If(self.i.stb,
+                n.eq(0),
+                self.cfg.eq(self.i.payload),
+            ),
+        ]
+
+
+class Channel(Module):
+    def __init__(self, width=16, **kwargs):
+        du = Spline(width=width*4, order=4)
+        da = DDS(width, **kwargs)
+        cfg = Config()
+        self.submodules += du, da, cfg
+        self.i = [cfg.i, du.i] + da.i
+        self.q_adjacent = [(Signal((width, True)), Signal((width, True)))
+                           for i in range(da.parallelism)]
+        self.o = [Signal((width, True)) for i in range(da.parallelism)]
+        self.parallelism = da.parallelism
+        self.latency = da.latency + 1
+        self.cordic_gain = da.gain
+
+        ###
+
+        ddu = Delay((width, True), da.latency - du.latency)
+        self.submodules += ddu
+        self.comb += [
+            ddu.i.eq(du.o.a0[-width:]),
+            da.ce.eq(cfg.ce),
+            da.clr.eq(cfg.cfg.clr),
+            du.o.ack.eq(cfg.ce),
+        ]
+        for oi, ai, qi in zip(self.o, da.o, self.q_adjacent):
             self.sync += [
-                oi[0].eq(ddu.o +
-                         Mux(self.iq[0], ai[0], 0) +
-                         Mux(self.iq[1], bi[0], 0)),
-                oi[1].eq(ddv.o +
-                         Mux(self.iq[2], ai[1], 0) +
-                         Mux(self.iq[3], bi[1], 0)),
+                oi.eq(ddu.o +
+                      Mux(cfg.cfg.iq[0], ai[0], 0) +
+                      Mux(cfg.cfg.iq[1], qi[0], 0)),
+                qi[1].eq(ai[1]),
             ]

@@ -2,7 +2,7 @@ from migen import *
 from migen.build.platforms import kc705
 from migen.build.generic_platform import *
 
-from sawg import DDSPair
+from sawg import Channel
 
 dumb = [
     ("data", 0, Pins("LPC:LA15_N LPC:LA16_N LPC:LA15_P LPC:LA16_P "
@@ -17,21 +17,24 @@ class Top(Module):
     def __init__(self, platform):
         i = platform.request("cpu_reset")
         width = 16
-        ch = DDSPair(width, parallelism=8)
-        self.submodules += ch
-        dat = Cat([ch.ce, ch.iq] + [[_.stb, _.payload.flatten()]
-                                    for _ in ch.i])
+        chs = [Channel(width, parallelism=8) for i in range(8)]
+        self.submodules += chs
+        self.comb += [[
+            chs[i].q_adjacent[j][0].eq(chs[i + 1].q_adjacent[j][1]),
+            chs[i + 1].q_adjacent[j][0].eq(chs[i].q_adjacent[j][1]),
+        ] for i in range(0, len(chs), 2) for j in range(len(chs[0].o))]
+        dat = Cat([[_.stb, _.payload.flatten()] for ch in chs for _ in ch.i])
         sr = Signal(len(dat))
         self.sync += sr.eq(Cat(i, sr)), dat.eq(sr)
 
         platform.add_extension(dumb)
         o = Signal((width, True))
-        self.sync += o.eq(sum(_[0] + _[1] for _ in ch.o))
-        for i in range(16):  # balance
-            o, o0 = Signal.like(o), o
-            self.sync += o.eq(o0)
+        for ch in chs:
+            for oi in ch.o:
+                o0, o = o, Signal.like(o)
+                self.sync += o.eq(o0 + oi)
         h = platform.request("data")
-        self.comb += h.eq(o)
+        self.sync += h.eq(o)
 
 
 if __name__ == "__main__":
