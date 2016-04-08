@@ -3,7 +3,7 @@ from misoc.interconnect.stream import Endpoint
 
 
 class Spline(Module):
-    def __init__(self, order, width, step=1):
+    def __init__(self, order, width, step=1, time_width=None):
         if not (step == 1 or order <= 2):
             raise ValueError("For non-linear splines, "
                              "`step` needs to be one.")
@@ -30,3 +30,17 @@ class Spline(Module):
                 ),
             ),
         ]
+
+    def tri(self, time_width):
+        layout = [(name, (length - i*time_width, signed))
+                  for i, (name, (length, signed), dir) in
+                  enumerate(self.i.payload.layout[::-1])]
+        layout.reverse()
+        i = Endpoint(layout)
+        self.comb += [
+            self.i.stb.eq(i.stb),
+            i.ack.eq(self.i.ack),
+            [i0[-len(i1):].eq(i1) for i0, i1 in
+             zip(self.i.payload.flatten(), i.payload.flatten())]
+        ]
+        return i

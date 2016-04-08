@@ -19,22 +19,25 @@ class Top(Module):
         width = 16
         chs = [Channel(width, parallelism=8) for i in range(8)]
         self.submodules += chs
+        # wire up q exchange
         self.comb += [[
-            chs[i].q_adjacent[j][0].eq(chs[i + 1].q_adjacent[j][1]),
-            chs[i + 1].q_adjacent[j][0].eq(chs[i].q_adjacent[j][1]),
+            chs[i].q_i[j].eq(chs[i + 1].q_o[j]),
+            chs[i + 1].q_i[j].eq(chs[i].q_o[j]),
         ] for i in range(0, len(chs), 2) for j in range(len(chs[0].o))]
+
+        # just take random data from a sr to prevent folding
         dat = Cat([[_.stb, _.payload.flatten()] for ch in chs for _ in ch.i])
         sr = Signal(len(dat))
         self.sync += sr.eq(Cat(i, sr)), dat.eq(sr)
 
+        # add all outputs together to prevent folding
         platform.add_extension(dumb)
         o = Signal((width, True))
         for ch in chs:
             for oi in ch.o:
                 o0, o = o, Signal.like(o)
                 self.sync += o.eq(o0 + oi)
-        h = platform.request("data")
-        self.sync += h.eq(o)
+        self.sync += platform.request("data").eq(o)
 
 
 if __name__ == "__main__":
