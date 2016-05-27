@@ -22,7 +22,7 @@ class Top(Module):
         # wire up q exchange
         for i in range(0, len(chs), 2):
             chs[i].connect_q(chs[i + 1])
-            chs[i + 1].connect_q(chs[i + 1])
+            chs[i + 1].connect_q(chs[i])
 
         # just take random data from a sr to prevent folding
         dat = Cat([[_.stb, _.payload.flatten()] for ch in chs for _ in ch.i])
