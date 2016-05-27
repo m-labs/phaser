@@ -20,10 +20,9 @@ class Top(Module):
         chs = [Channel(width, parallelism=8) for i in range(8)]
         self.submodules += chs
         # wire up q exchange
-        self.comb += [[
-            chs[i].q_i[j].eq(chs[i + 1].q_o[j]),
-            chs[i + 1].q_i[j].eq(chs[i].q_o[j]),
-        ] for i in range(0, len(chs), 2) for j in range(len(chs[0].o))]
+        for i in range(0, len(chs), 2):
+            chs[i].connect_q(chs[i + 1])
+            chs[i + 1].connect_q(chs[i + 1])
 
         # just take random data from a sr to prevent folding
         dat = Cat([[_.stb, _.payload.flatten()] for ch in chs for _ in ch.i])

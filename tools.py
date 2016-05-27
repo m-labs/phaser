@@ -20,7 +20,9 @@ def xfer(dut, **kw):
     while ep:
         yield
         for e in ep[:]:
-            if (yield e.ack):
+            if hasattr(e, "busy") and (yield e.busy):
+                raise ValueError(e, "busy")
+            if not hasattr(e, "ack") or (yield e.ack):
                 yield e.stb.eq(0)
                 ep.remove(e)
 

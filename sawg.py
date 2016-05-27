@@ -124,7 +124,7 @@ class Channel(Module):
         self.submodules += du, da, cfg
         self.i = [cfg.i, du.tri(t_width)] + da.i
         self.q_i = [Signal((width, True)) for i in range(da.parallelism)]
-        self.q_o = []
+        self.q_o = [ai[1] for ai in da.o]
         self.o = [Signal((width, True)) for i in range(da.parallelism)]
         self.parallelism = da.parallelism
         self.latency = da.latency + 1
@@ -148,4 +148,7 @@ class Channel(Module):
                       Mux(cfg.cfg.iq[0], ai[0], 0) +
                       Mux(cfg.cfg.iq[1], qi, 0)),
             ]
-            self.q_o.append(ai[1])
+
+    def connect_q(self, buddy):
+        for i, qi in enumerate(self.q_i):
+            self.comb += qi.eq(buddy.q_o[i])
