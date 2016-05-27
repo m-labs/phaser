@@ -8,7 +8,7 @@ from misoc.integration.builder import builder_args, builder_argdict
 
 from artiq.gateware.soc import build_artiq_soc
 from artiq.gateware.targets import kc705
-from artiq.gateware import rtio, nist_clock
+from artiq.gateware import rtio
 from artiq.gateware.rtio.phy import ttl_simple, ttl_serdes_7series
 
 import rtio_sawg
@@ -19,7 +19,6 @@ class Phaser(kc705._NIST_Ions):
         kc705._NIST_Ions.__init__(self, cpu_type, **kwargs)
 
         platform = self.platform
-        platform.add_extension(nist_clock.fmc_adapter_io)
 
         rtio_channels = []
 
@@ -68,6 +67,7 @@ def main():
         description="ARTIQ core device builder / KC705 / Phaser")
     builder_args(parser)
     soc_kc705_args(parser)
+    parser.set_defaults(toolchain="vivado")
     args = parser.parse_args()
     soc = Phaser(**soc_kc705_argdict(args))
     build_artiq_soc(soc, builder_argdict(args))
