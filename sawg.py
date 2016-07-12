@@ -121,12 +121,12 @@ class DDSSlow(Module):
             ),
         ]
         self.comb += [
-            eqh(da.i, a.o.a0),
             da.ce.eq(q.i.stb & q.i.ack),
             a.o.ack.eq(self.ce),
             p.o.ack.eq(self.ce),
             f.o.ack.eq(self.ce),
             q.i.stb.eq(self.ce),
+            eqh(da.i, a.o.a0),
             eqh(q.i.p, p.o.a0),
             q.i.f.eq(f.o.a0),
             q.o.ack.eq(1),
@@ -158,10 +158,11 @@ class DDS(Module, SatAddMixin):
 
         self.f = f.tri(t_width)
         self.p = p.tri(t_width)
-        self.i = []
-        for bi in self.b:
+        self.i = [self.f, self.p]
+        for i, bi in enumerate(self.b):
             self.i += bi.i
-        self.i += [self.f, self.p]
+            for j in "afp":
+                setattr(self, "{}{}".format(j, i), getattr(bi, j))
         self.o = [[Signal((width, True)) for i in range(2)]
                   for i in range(parallelism)]
         self.ce = Signal()
@@ -174,8 +175,6 @@ class DDS(Module, SatAddMixin):
         self.latency += self.b[0].latency  # TODO: f0/p0, q.latency delta
         q = PhasedAccu(f_width, parallelism)
         self.submodules += q
-        x = Signal.like(self.b[0].o[0])
-        y = Signal.like(self.b[0].o[1])
 
         self.sync += [
             If(p.o.stb & p.o.ack,
@@ -187,15 +186,16 @@ class DDS(Module, SatAddMixin):
         ]
         self.comb += [
             [bi.ce.eq(self.ce) for bi in self.b],
+            [bi.clr.eq(self.clr) for bi in self.b],
             p.o.ack.eq(self.ce),
             f.o.ack.eq(self.ce),
             q.i.stb.eq(self.ce),
             eqh(q.i.p, p.o.a0),
             eqh(q.i.f, f.o.a0),
             q.o.ack.eq(1),
-            x.eq(self.sat_add(*(bi.o[0] for bi in self.b))),
-            y.eq(self.sat_add(*(bi.o[1] for bi in self.b))),
         ]
+        x = self.sat_add(bi.o[0] for bi in self.b)
+        y = self.sat_add(bi.o[1] for bi in self.b)
 
         c = []
         for i in range(parallelism):
@@ -212,7 +212,7 @@ class DDS(Module, SatAddMixin):
                 eqh(self.o[i][1], ci.yo),
             ]
         self.latency += c[0].latency
-        self.gain = c[0].gain
+        self.gain = self.b[0].gain * c[0].gain
 
 
 class Config(Module):

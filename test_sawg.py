@@ -12,9 +12,12 @@ def _test_gen_dds(dut, o):
     yield dut.ce.eq(1)
     yield dut.clr.eq(1)
     yield from xfer(dut,
-                    a=dict(a0=1),
+                    a1=dict(a0=10),
+                    p1=dict(a0=0),
+                    f1=dict(a0=0 << 16, a1=0),
+                    f=dict(a0=10 << 16),
                     p=dict(a0=0),
-                    f=dict(a0=1 << 16, a1=0))
+                    )
     for i in range(256):
         yield
         o.append((yield from [((yield _[0]), (yield _[1])) for _ in dut.o]))
