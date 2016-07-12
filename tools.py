@@ -1,3 +1,6 @@
+from operator import add
+from functools import reduce
+
 from migen import *
 
 
@@ -45,3 +48,29 @@ class Delay(Module):
             self.comb += o.eq(self.o)
         self.latency = delay
         self.sync += [z[j + 1].eq(z[j]) for j in range(delay)]
+
+
+def eqh(a, b):
+    return a[-len(b):].eq(b[-len(a):])
+
+
+class SatAddMixin:
+    def sat_add(self, *a):
+        # assert all(len(a[0]) == len(ai) for ai in a)
+        # assert all(a[0].signed == ai.signed for ai in a)
+        n = max(len(ai) for ai in a)
+        o = log2_int(len(a))
+        s = Signal((n + o, True))
+        self.comb += s.eq(reduce(add, a))
+        if len(a) == 1:
+            return s
+        else:
+            s0 = Signal((n, True))
+            self.comb += [
+                If(s[-o:] == Replicate(s[-o-1], o),
+                    s0.eq(s),
+                ).Else(
+                    s0.eq(Cat(Replicate(~s[-1], n - 1), s[-1])),
+                )
+            ]
+            return s0
