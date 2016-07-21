@@ -24,7 +24,7 @@ class Phaser(kc705._NIST_Ions):
 
         phy = ttl_serdes_7series.Inout_8X(platform.request("user_sma_gpio_n"))
         self.submodules += phy
-        rtio_channels.append(rtio.Channel.from_phy(phy, ififo_depth=512))
+        rtio_channels.append(rtio.Channel.from_phy(phy, ififo_depth=128))
 
         phy = ttl_simple.Output(platform.request("user_led", 2))
         self.submodules += phy
@@ -45,21 +45,19 @@ class Phaser(kc705._NIST_Ions):
         rtio_channels.extend(rtio.Channel.from_phy(phy)
                              for sawg in sawgs
                              for phy in sawg.phys)
-
-        self.config["RTIO_FIRST_SPI_CHANNEL"] = len(rtio_channels)
-
-        self.config["RTIO_FIRST_DDS_CHANNEL"] = len(rtio_channels)
-        self.config["RTIO_DDS_COUNT"] = 0
-        self.config["DDS_CHANNELS_PER_BUS"] = 11
-        self.config["DDS_AD9914"] = True
-        self.config["DDS_ONEHOT_SEL"] = True
-
         self.config["RTIO_LOG_CHANNEL"] = len(rtio_channels)
         rtio_channels.append(rtio.LogChannel())
-
         self.add_rtio(rtio_channels)
         assert self.rtio.fine_ts_width <= 3
-        self.config["DDS_RTIO_CLK_RATIO"] = 24 >> self.rtio.fine_ts_width
+
+        #self.config["RTIO_FIRST_SPI_CHANNEL"] = len(rtio_channels)
+        #self.config["RTIO_FIRST_DDS_CHANNEL"] = len(rtio_channels)
+        #self.config["RTIO_DDS_COUNT"] = 0
+        #self.config["DDS_CHANNELS_PER_BUS"] = 11
+        #self.config["DDS_AD9914"] = True
+        #self.config["DDS_ONEHOT_SEL"] = True
+        #self.config["DDS_RTIO_CLK_RATIO"] = 24 >> self.rtio.fine_ts_width
+
 
 
 def main():

@@ -15,7 +15,8 @@ dumb = [
 
 class Top(Module):
     def __init__(self, platform):
-        i = platform.request("cpu_reset")
+        platform.add_extension(dumb)
+
         width = 16
         chs = [Channel(width, parallelism=8) for i in range(4)]
         self.submodules += chs
@@ -25,12 +26,12 @@ class Top(Module):
             chs[i + 1].connect_q(chs[i])
 
         # just take random data from a sr to prevent folding
+        inp = platform.request("cpu_reset")
         dat = Cat([[_.stb, _.payload.flatten()] for ch in chs for _ in ch.i])
         sr = Signal(len(dat))
-        self.sync += sr.eq(Cat(i, sr)), dat.eq(sr)
+        self.sync += sr.eq(Cat(inp, sr)), dat.eq(sr)
 
         # add all outputs together to prevent folding
-        platform.add_extension(dumb)
         o = Signal((width, True))
         for ch in chs:
             for oi in ch.o:
