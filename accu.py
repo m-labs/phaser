@@ -12,9 +12,7 @@ class Accu(Module):
 
         f = Signal.like(self.i.f)
         p = Signal.like(self.i.p)
-        self.comb += [
-            self.i.ack.eq(~self.o.stb | self.o.ack),
-        ]
+        self.comb += self.i.ack.eq(~self.o.stb | self.o.ack)
         self.sync += [
             If(self.o.ack,
                 self.o.stb.eq(0),

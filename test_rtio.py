@@ -12,12 +12,13 @@ def _test_gen_dds(dut, o):
     yield from xfer(dut.phys[0].rtlink, o={"data": 0b11100000})
     # u (dc bias)
     yield from xfer(dut.phys[1].rtlink, o={"data": 0})
-    # a (dds amplitude)
-    yield from xfer(dut.phys[2].rtlink, o={"data": 50})
     # f (dds frequency)
-    yield from xfer(dut.phys[3].rtlink, o={"data": 1 << 16})
+    yield from xfer(dut.phys[2].rtlink, o={"data": 5 << 24})
     # p (dds phase)
-    yield from xfer(dut.phys[4].rtlink, o={"data": 0})
+    yield from xfer(dut.phys[3].rtlink, o={"data": 0})
+    # a1 (dds amplitude)
+    yield from xfer(dut.phys[4].rtlink, o={"data": 20})
+
     for i in range(256):
         yield
         o.append((yield from [(yield _) for _ in dut.o]))

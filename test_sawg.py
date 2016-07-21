@@ -15,7 +15,7 @@ def _test_gen_dds(dut, o):
                     a1=dict(a0=10),
                     p1=dict(a0=0),
                     f1=dict(a0=0 << 16, a1=0),
-                    f=dict(a0=10 << 16),
+                    f=dict(a0=10 << 24),
                     p=dict(a0=0),
                     )
     for i in range(256):
@@ -24,8 +24,7 @@ def _test_gen_dds(dut, o):
 
 
 def _test_channel():
-    # dut = Channel()
-    dut = DDS(8, parallelism=2)
+    dut = DDS(width=8, parallelism=2)
 
     if False:
         print(convert(dut))
