@@ -22,7 +22,7 @@ class Phaser(kc705._NIST_Ions):
 
         rtio_channels = []
 
-        phy = ttl_serdes_7series.Inout_8X(platform.request("user_sma_gpio_n"))
+        phy = ttl_serdes_7series.Inout_8X(platform.request("user_sma_gpio_n_33"))
         self.submodules += phy
         rtio_channels.append(rtio.Channel.from_phy(phy, ififo_depth=128))
 
