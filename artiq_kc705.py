@@ -34,11 +34,12 @@ class Phaser(kc705._NIST_Ions):
 
         self.config["RTIO_FIRST_PHASER_CHANNEL"] = len(rtio_channels)
 
-        sawgs = [rtio_sawg.Channel(width=16, parallelism=8)
+        sawgs = [rtio_sawg.Channel(width=16, parallelism=4)
                  for i in range(4)]
         self.submodules += sawgs
         # TODO: wire up sawg.o[:parallelism, :width]
-        # TODO: support wider RTIO (data) channels (fine here for testing)
+        # TODO: support wider RTIO (data) channels
+        # (64 bit is fine here for testing)
         for i in range(0, len(sawgs), 2):
             sawgs[i].connect_q(sawgs[i + 1])
             sawgs[i + 1].connect_q(sawgs[i])
@@ -48,16 +49,14 @@ class Phaser(kc705._NIST_Ions):
         self.config["RTIO_LOG_CHANNEL"] = len(rtio_channels)
         rtio_channels.append(rtio.LogChannel())
         self.add_rtio(rtio_channels)
+
+        self.config["RTIO_FIRST_DDS_CHANNEL"] = len(rtio_channels)
+        self.config["RTIO_DDS_COUNT"] = 0
+        self.config["DDS_CHANNELS_PER_BUS"] = 1
+        self.config["DDS_AD9914"] = True
+        self.config["DDS_ONEHOT_SEL"] = True
+        self.config["DDS_RTIO_CLK_RATIO"] = 24 >> self.rtio.fine_ts_width
         assert self.rtio.fine_ts_width <= 3
-
-        #self.config["RTIO_FIRST_SPI_CHANNEL"] = len(rtio_channels)
-        #self.config["RTIO_FIRST_DDS_CHANNEL"] = len(rtio_channels)
-        #self.config["RTIO_DDS_COUNT"] = 0
-        #self.config["DDS_CHANNELS_PER_BUS"] = 11
-        #self.config["DDS_AD9914"] = True
-        #self.config["DDS_ONEHOT_SEL"] = True
-        #self.config["DDS_RTIO_CLK_RATIO"] = 24 >> self.rtio.fine_ts_width
-
 
 
 def main():
