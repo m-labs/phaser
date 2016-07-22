@@ -34,18 +34,20 @@ class Phaser(kc705._NIST_Ions):
 
         self.config["RTIO_FIRST_PHASER_CHANNEL"] = len(rtio_channels)
 
-        sawgs = [rtio_sawg.Channel(width=16, parallelism=4)
+        sawgs = [rtio_sawg.Channel(width=16, parallelism=4,
+                                   a_order=1, p_order=1, f_order=1)
                  for i in range(4)]
         self.submodules += sawgs
+        for i in range(0, len(sawgs), 2):
+            sawgs[i].connect_q(sawgs[i + 1])
+            sawgs[i + 1].connect_q(sawgs[i])
         # TODO: wire up sawg.o[:parallelism, :width]
         # TODO: support wider RTIO (data) channels
         # (64 bit is fine here for testing)
-        for i in range(0, len(sawgs), 2):
-            sawgs[i]._ll.connect_q(sawgs[i + 1]._ll)
-            sawgs[i + 1]._ll.connect_q(sawgs[i]._ll)
         rtio_channels.extend(rtio.Channel.from_phy(phy)
                              for sawg in sawgs
                              for phy in sawg.phys)
+
         self.config["RTIO_LOG_CHANNEL"] = len(rtio_channels)
         rtio_channels.append(rtio.LogChannel())
         self.add_rtio(rtio_channels)

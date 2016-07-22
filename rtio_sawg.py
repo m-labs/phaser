@@ -24,3 +24,6 @@ class Channel(Module):
             ]
             # TODO: probes, overrides
             self.phys.append(_Phy(rl, [], []))
+
+    def connect_q(self, other):
+        return self._ll.connect_q(other._ll)
