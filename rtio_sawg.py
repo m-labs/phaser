@@ -9,11 +9,12 @@ import sawg
 _Phy = namedtuple("Phy", "rtlink probes overrides")
 
 
-class Channel(sawg.Channel):
+class Channel(Module):
     def __init__(self, *args, **kwargs):
-        sawg.Channel.__init__(self, *args, **kwargs)
+        self.submodules._ll = ClockDomainsRenamer("rio_phy")(
+            sawg.Channel(*args, **kwargs))
         self.phys = []
-        for i in self.i:
+        for i in self._ll.i:
             rl = rtlink.Interface(rtlink.OInterface(
                 min(64, len(i.payload))))
             self.comb += [
@@ -21,4 +22,5 @@ class Channel(sawg.Channel):
                 rl.o.busy.eq(~i.ack),
                 Cat(i.payload.flatten()).eq(rl.o.data),
             ]
+            # TODO: probes, overrides
             self.phys.append(_Phy(rl, [], []))

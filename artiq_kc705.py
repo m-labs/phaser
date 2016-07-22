@@ -41,8 +41,8 @@ class Phaser(kc705._NIST_Ions):
         # TODO: support wider RTIO (data) channels
         # (64 bit is fine here for testing)
         for i in range(0, len(sawgs), 2):
-            sawgs[i].connect_q(sawgs[i + 1])
-            sawgs[i + 1].connect_q(sawgs[i])
+            sawgs[i]._ll.connect_q(sawgs[i + 1]._ll)
+            sawgs[i + 1]._ll.connect_q(sawgs[i]._ll)
         rtio_channels.extend(rtio.Channel.from_phy(phy)
                              for sawg in sawgs
                              for phy in sawg.phys)
