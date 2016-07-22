@@ -8,7 +8,7 @@ from misoc.integration.builder import builder_args, builder_argdict
 
 from artiq.gateware.soc import build_artiq_soc
 from artiq.gateware.targets import kc705
-from artiq.gateware import rtio
+from artiq.gateware import rtio, nist_clock
 from artiq.gateware.rtio.phy import ttl_simple, ttl_serdes_7series
 
 import rtio_sawg
@@ -19,6 +19,7 @@ class Phaser(kc705._NIST_Ions):
         kc705._NIST_Ions.__init__(self, cpu_type, **kwargs)
 
         platform = self.platform
+        platform.add_extension(nist_clock.fmc_adapter_io)
 
         rtio_channels = []
 
@@ -41,7 +42,15 @@ class Phaser(kc705._NIST_Ions):
         for i in range(0, len(sawgs), 2):
             sawgs[i].connect_q(sawgs[i + 1])
             sawgs[i + 1].connect_q(sawgs[i])
-        # TODO: wire up sawg.o[:parallelism, :width]
+
+        # TODO: dummy
+        o = Signal((16, True))
+        for ch in sawgs:
+            for oi in ch._ll.o:
+                o0, o = o, Signal.like(o)
+                self.sync += o.eq(o0 + oi)
+        self.sync.rio_phy += platform.request("dds").d.eq(o)
+
         # TODO: support wider RTIO (data) channels
         # (64 bit is fine here for testing)
         rtio_channels.extend(rtio.Channel.from_phy(phy)
