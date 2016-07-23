@@ -57,21 +57,18 @@ def eqh(a, b):
 class SatAddMixin:
     def sat_add(self, a):
         a = list(a)
-        # assert all(len(a[0]) == len(ai) for ai in a)
-        # assert all(a[0].signed == ai.signed for ai in a)
+        assert all(ai.signed for ai in a)
         n = max(len(ai) for ai in a)
-        o = log2_int(len(a))
+        o = log2_int(len(a), need_pow2=False)
         s = Signal((n + o, True))
-        self.comb += s.eq(reduce(add, a))
-        if len(a) == 1:
-            return s
-        else:
-            s0 = Signal((n, True))
-            self.comb += [
-                If(s[-o:] == Replicate(s[-o-1], o),
-                    s0.eq(s[:n]),
-                ).Else(
-                    s0.eq(Cat(Replicate(~s[-1], n - 1), s[-1])),
-                )
-            ]
-            return s0
+        s0 = Signal((n, True))
+        self.comb += [
+            s.eq(reduce(add, a)),
+            s0[-1].eq(s[-1]),
+            If(s[-o-1:] == Replicate(s[-1], o + 1),
+                s0[:-1].eq(s[:n-1]),
+            ).Else(
+                s0[:-1].eq(Replicate(~s[-1], n - 1)),
+            )
+        ]
+        return s0
