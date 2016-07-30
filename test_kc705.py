@@ -18,7 +18,7 @@ class Top(Module):
         platform.add_extension(dumb)
 
         width = 16
-        chs = [Channel(width, parallelism=8) for i in range(4)]
+        chs = [Channel(width, parallelism=8) for i in range(8)]
         self.submodules += chs
         # wire up q exchange
         for i in range(0, len(chs), 2):
