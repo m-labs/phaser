@@ -95,6 +95,7 @@ class DDSSlow(Module):
         self.f = f.tri(t_width)
         self.p = p.tri(t_width)
         self.i = [self.a, self.f, self.p]
+        self.i_names = "a f p".split()
         self.o = [Signal((width, True)) for i in range(2)]
         self.ce = Signal()
         self.clr = Signal()
@@ -156,13 +157,16 @@ class DDS(Module, SatAddMixin):
         f = Spline(order=1, width=f_width)
         self.submodules += self.b, p, f
 
-        self.f = f.tri(t_width)
-        self.p = p.tri(t_width)
-        self.i = [self.f, self.p]
+        self.f0 = f.tri(t_width)
+        self.p0 = p.tri(t_width)
+        self.i = [self.f0, self.p0]
+        self.i_names = "f0 p0".split()
         for i, bi in enumerate(self.b):
             self.i += bi.i
+            for ii in bi.i_names:
+                self.i_names.append("{}{}".format(ii, i + 1))
             for j in "afp":
-                setattr(self, "{}{}".format(j, i), getattr(bi, j))
+                setattr(self, "{}{}".format(j, i + 1), getattr(bi, j))
         self.o = [[Signal((width, True)) for i in range(2)]
                   for i in range(parallelism)]
         self.ce = Signal()
@@ -246,7 +250,7 @@ class Config(Module):
         ]
 
 
-class Channel(Module):
+class Channel(Module, SatAddMixin):
     def __init__(self, width=16, t_width=None, u_order=4, **kwargs):
         if t_width is None:
             t_width = width
@@ -255,9 +259,11 @@ class Channel(Module):
         cfg = Config()
         self.submodules += du, da, cfg
         self.i = [cfg.i, du.tri(t_width)] + da.i
+        self.i_names = "cfg u".split() + da.i_names
         self.q_i = [Signal((width, True)) for i in range(da.parallelism)]
         self.q_o = [ai[1] for ai in da.o]
         self.o = [Signal((width, True)) for i in range(da.parallelism)]
+        self.width = width
         self.parallelism = da.parallelism
         self.latency = da.latency + 1
         self.cordic_gain = da.gain
@@ -265,10 +271,10 @@ class Channel(Module):
         ###
 
         # delay du to match da
-        # ddu = Delay((width, True), da.latency - du.latency)
-        # self.submodules += ddu
+        ddu = Delay((width, True), da.latency - du.latency)
+        self.submodules += ddu
         self.comb += [
-        #     ddu.i.eq(du.o.a0[-width:]),
+            ddu.i.eq(du.o.a0[-width:]),
             da.clr.eq(cfg.cfg.clr),
             da.ce.eq(cfg.ce),
             du.o.ack.eq(cfg.ce),
@@ -276,9 +282,11 @@ class Channel(Module):
         # wire up outputs and q_{i,o} exchange
         for oi, ai, qi in zip(self.o, da.o, self.q_i):
             self.sync += [
-                oi.eq(du.o.a0[-width:] + # ddu.o +
-                      Mux(cfg.cfg.iq[0], ai[0], 0) +
-                      Mux(cfg.cfg.iq[1], qi, 0)),
+                oi.eq(self.sat_add([
+                    ddu.o +
+                    # du.o.a0[-width:],
+                    Mux(cfg.cfg.iq[0], ai[0], 0),
+                    Mux(cfg.cfg.iq[1], qi, 0)])),
             ]
 
     def connect_q(self, buddy):

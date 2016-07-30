@@ -13,7 +13,8 @@ class Channel(sawg.Channel):
     def __init__(self, *args, **kwargs):
         sawg.Channel.__init__(self, *args, **kwargs)
         self.phys = []
-        for i in self.i:
+        self.phys_names = {}
+        for j, i in enumerate(self.i):
             rl = rtlink.Interface(rtlink.OInterface(
                 min(64, len(i.payload))))
             self.comb += [
@@ -22,4 +23,6 @@ class Channel(sawg.Channel):
                 Cat(i.payload.flatten()).eq(rl.o.data),
             ]
             # TODO: probes, overrides
-            self.phys.append(_Phy(rl, [], []))
+            phy = _Phy(rl, [], [])
+            self.phys.append(phy)
+            self.phys_names[self.i_names[j]] = phy
