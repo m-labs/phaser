@@ -57,13 +57,14 @@ def eqh(a, b):
 class SatAddMixin:
     def sat_add(self, a):
         a = list(a)
-        assert all(ai.signed for ai in a)
+        # assert all(value_bits_sign(ai)[1] for ai in a)
         n = max(len(ai) for ai in a)
         o = log2_int(len(a), need_pow2=False)
         s = Signal((n + o, True))
         s0 = Signal((n, True))
+        z = Signal((1, True))
         self.comb += [
-            s.eq(reduce(add, a)),
+            s.eq(reduce(add, a, z)),
             s0[-1].eq(s[-1]),
             If(s[-o-1:] == Replicate(s[-1], o + 1),
                 s0[:-1].eq(s[:n-1]),
@@ -72,3 +73,22 @@ class SatAddMixin:
             )
         ]
         return s0
+
+
+def szip(*iters):
+    active = {it: None for it in iters}
+    while active:
+        for it in list(active):
+            while True:
+                try:
+                    val = it.send(active[it])
+                except StopIteration:
+                    del active[it]
+                    break
+                if val is None:
+                    break
+                else:
+                    active[it] = (yield val)
+        val = (yield None)
+        for it in active:
+            active[it] = val
