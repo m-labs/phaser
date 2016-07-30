@@ -15,8 +15,8 @@ def _test_gen_dds(dut, o):
                     a1=dict(a0=10),
                     p1=dict(a0=0),
                     f1=dict(a0=0 << 16, a1=0),
-                    f=dict(a0=10 << 24),
-                    p=dict(a0=0),
+                    f0=dict(a0=10 << 24),
+                    p0=dict(a0=0),
                     )
     for i in range(256):
         yield
