@@ -4,36 +4,66 @@ from migen import *
 from migen.fhdl.verilog import convert
 
 from rtio_sawg import Channel
-from tools import xfer
+from tools import xfer, szip
 
 
-def _test_gen_dds(dut, o):
-    # cfg: iq=0b11, clr=0b1, tap=0b00000
-    yield from xfer(dut.phys[0].rtlink, o={"data": 0b11100000})
-    # u (dc bias)
-    yield from xfer(dut.phys[1].rtlink, o={"data": 0})
-    # f (dds frequency)
-    yield from xfer(dut.phys[2].rtlink, o={"data": 5 << 24})
-    # p (dds phase)
-    yield from xfer(dut.phys[3].rtlink, o={"data": 0})
-    # a1 (dds amplitude)
-    yield from xfer(dut.phys[4].rtlink, o={"data": 20})
+def rtio_xfer(dut, **kwargs):
+    yield from szip(*(
+        xfer(dut.phys_names[k].rtlink, o={"data": v})
+        for k, v in kwargs.items()))
 
-    for i in range(256):
+
+def gen_rtio(dut):
+    width = dut.width
+    # iq=0b11, clr=0b1, tap=0b00000
+    yield from rtio_xfer(dut, cfg=0b11100000)
+    yield
+    f0 = int(157/(200*4)*2**(4*width))
+    f1 = int(81/200*2**(3*width))
+    f2 = int(5/200*2**(3*width))
+    a1 = int(.087*2**width)
+    a2 = int(.95*a1)
+    print(hex(f0), hex(f1), hex(a1), hex(a2))
+    yield from rtio_xfer(
+        dut,
+        u=0,
+        f0=f0, p0=0,
+        a1=a1, f1=f1, p1=0,
+        a2=a2, f2=f2, p2=0,
+    )
+
+
+def gen_log(dut, o, n):
+    for i in range(3 + dut.latency):
+        yield
+    for i in range(n):
         yield
         o.append((yield from [(yield _) for _ in dut.o]))
 
 
 def _test_channel():
-    dut = Channel(width=8, parallelism=2)
+    width = 16
+    dut = Channel(width=width, parallelism=4)
 
     if False:
         print(convert(dut))
-    else:
-        o = []
-        run_simulation(dut, _test_gen_dds(dut, o), vcd_name="dds.vcd")
-        o = np.array(o)
-        print(o)
+        return
+
+    o = []
+    run_simulation(
+        dut,
+        [gen_rtio(dut), gen_log(dut, o, 256 * 32)],
+    )  # vcd_name="dds.vcd")
+    o = np.array(o)/(1 << (width - 1))
+    o = o.ravel()
+    np.savez_compressed("dds.npz", o=o)
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(2)
+    ax[0].step(np.arange(o.size), o)
+    ax[1].psd(o, 1 << 10, Fs=1, noverlap=1 << 9, scale_by_freq=False)
+    fig.savefig("dds.pdf")
+    plt.show()
 
 
 if __name__ == "__main__":
