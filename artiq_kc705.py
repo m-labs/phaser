@@ -35,9 +35,8 @@ class Phaser(kc705._NIST_Ions):
 
         self.config["RTIO_FIRST_PHASER_CHANNEL"] = len(rtio_channels)
 
-        sawgs = [rtio_sawg.Channel(width=16, parallelism=4,
-                                   a_order=1, p_order=1, f_order=1)
-                 for i in range(4)]
+        Channel = ClockDomainsRenamer("rio_phy")(rtio_sawg.Channel)
+        sawgs = [Channel(width=16, parallelism=8) for i in range(4)]
         self.submodules += sawgs
         for i in range(0, len(sawgs), 2):
             sawgs[i].connect_q(sawgs[i + 1])
@@ -46,7 +45,7 @@ class Phaser(kc705._NIST_Ions):
         # TODO: dummy
         o = Signal((16, True))
         for ch in sawgs:
-            for oi in ch._ll.o:
+            for oi in ch.o:
                 o0, o = o, Signal.like(o)
                 self.sync += o.eq(o0 + oi)
         self.sync.rio_phy += platform.request("dds").d.eq(o)
