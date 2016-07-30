@@ -23,6 +23,7 @@ class Platform(XilinxPlatform):
     default_clk_period = 8.
 
     def __init__(self):
-        XilinxPlatform.__init__(self, "xcku040-ffva1156e-2", _io, _connectors)
+        XilinxPlatform.__init__(self, "xcku040-ffva1156-2-e", _io, _connectors,
+                                toolchain="vivado")
         self.toolchain.bitstream_commands = ["set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]"]
         self.toolchain.additional_commands = ["write_cfgmem -force -format bin -interface spix4 -size 16 -loadbit \"up 0x0 {build_name}.bit\" -file {build_name}.bin"]
