@@ -18,7 +18,7 @@ def gen_rtio(dut):
     # iq=0b11, clr=0b1, tap=0b00000
     yield from rtio_xfer(dut, cfg=0b11100000)
     yield
-    f0 = int(157/(200*4)*2**(4*width))
+    f0 = int(157/(200*8)*2**(4*width))
     f1 = int(81/200*2**(3*width))
     f2 = int(5/200*2**(3*width))
     a1 = int(.087*2**width)
@@ -43,7 +43,7 @@ def gen_log(dut, o, n):
 
 def _test_channel():
     width = 16
-    dut = Channel(width=width, parallelism=4)
+    dut = Channel(width=width, parallelism=8)
 
     if False:
         print(convert(dut))
