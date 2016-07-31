@@ -53,7 +53,7 @@ class MCM(Module):
         if n > 4:
             self.comb += o[4].eq(i << 2)
         if n > 5:
-            self.comb += o[5].eq(i + i << 2)
+            self.comb += o[5].eq(i + (i << 2))
         if n > 6:
             self.comb += o[6].eq(o[3] << 1)
         if n > 7:
