@@ -2,13 +2,16 @@ from migen import *
 from migen.build.generic_platform import *
 
 from sawg import Channel
-import ku105
+import kcu105
 
 
 class Top(Module):
     def __init__(self, platform):
+        assert platform.default_clk_period
+        platform.default_clk_period = 4
+
         width = 16
-        chs = [Channel(width, parallelism=8) for i in range(8)]
+        chs = [Channel(width, parallelism=4) for i in range(4)]
         self.submodules += chs
         # wire up q exchange
         for i in range(0, len(chs), 2):
@@ -31,6 +34,6 @@ class Top(Module):
 
 
 if __name__ == "__main__":
-    platform = ku105.Platform()
+    platform = kcu105.Platform()
     top = Top(platform)
-    platform.build(top)
+    platform.build(top, build_dir="build_kcu105_250mhz")

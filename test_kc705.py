@@ -15,6 +15,8 @@ dumb = [
 
 class Top(Module):
     def __init__(self, platform):
+        assert platform.default_clk_period
+        platform.default_clk_period = 8
         platform.add_extension(dumb)
 
         width = 16
@@ -43,4 +45,4 @@ class Top(Module):
 if __name__ == "__main__":
     platform = kc705.Platform()
     top = Top(platform)
-    platform.build(top)
+    platform.build(top, build_dir="build_kc705_4ns")
